@@ -19,8 +19,8 @@ public:
 public:
 	void Send(const char* Buffer, int BufferSize)
 	{
-		int SentBytes{ sendto(m_Socket, Buffer, BufferSize, 0, (sockaddr*)&m_Server, sizeof(m_Server)) };
-		if (SentBytes > 0)
+		int SentByteCount{ sendto(m_Socket, Buffer, BufferSize, 0, (sockaddr*)&m_Server, sizeof(m_Server)) };
+		if (SentByteCount > 0)
 		{
 			printf("Sent[%d]: %s\n", BufferSize, Buffer);
 		}
@@ -32,13 +32,12 @@ public:
 		FD_ZERO(&fdSet);
 		FD_SET(m_Socket, &fdSet);
 
-		int Result{ select(0, &fdSet, 0, 0, &m_TimeOut) };
-		if (Result > 0)
+		if (select(0, &fdSet, 0, 0, &m_TimeOut) > 0)
 		{
 			m_TimeOutCount = 0;
 			int ServerAddrLen{ (int)sizeof(m_Server) };
-			int ReceivedBytes{ recvfrom(m_Socket, m_Buffer, KBufferSize, 0, (sockaddr*)&m_Server, &ServerAddrLen) };
-			if (ReceivedBytes > 0)
+			int ReceivedByteCount{ recvfrom(m_Socket, m_Buffer, KBufferSize, 0, (sockaddr*)&m_Server, &ServerAddrLen) };
+			if (ReceivedByteCount > 0)
 			{
 				printf("From SERVER: %s\n", m_Buffer);
 			}
@@ -61,7 +60,7 @@ private:
 		int Result{ WSAStartup(MAKEWORD(2, 2), &wsaData) };
 		if (Result)
 		{
-			printf("Failed to start up WSA.\n");
+			printf("Failed to start up WSA: %d\n", Result);
 			return;
 		}
 		m_bStartUp = true;
@@ -78,7 +77,7 @@ private:
 		m_Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 		if (m_Socket == INVALID_SOCKET)
 		{
-			printf("Failed to connect.\n");
+			printf("Failed to connect: %d\n", WSAGetLastError());
 			return;
 		}
 		m_bSocketCreated = true;
@@ -101,9 +100,9 @@ private:
 	{
 		if (m_bSocketCreated)
 		{
-			if (closesocket(m_Socket))
+			if (closesocket(m_Socket) == SOCKET_ERROR)
 			{
-				printf("failed to closesocket(): %d", WSAGetLastError());
+				printf("Failed to close socket: %d", WSAGetLastError());
 			}
 			else
 			{

@@ -30,7 +30,7 @@ public:
 			addr.sin_family = AF_INET;
 			addr.sin_port = htons(KPort);
 			addr.sin_addr = m_HostAddr.sin_addr;
-			if (bind(m_Socket, (sockaddr*)&addr, sizeof(addr)))
+			if (bind(m_Socket, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR)
 			{
 				printf("%s bind(): %d\n", KFailureHead, WSAGetLastError());
 				return false;
@@ -61,27 +61,26 @@ public:
 		FD_ZERO(&fdSet);
 		FD_SET(m_Socket, &fdSet);
 
-		int Result{ select(0, &fdSet, 0, 0, &TimeOut) };
-		if (Result > 0)
+		if (select(0, &fdSet, 0, 0, &TimeOut) > 0)
 		{
 			SOCKADDR_IN Client{};
 			int ClientAddrLen{ (int)sizeof(Client) };
-			int received_bytes{ recvfrom(m_Socket, m_Buffer, KBufferSize, 0, (sockaddr*)&Client, &ClientAddrLen) };
-			if (received_bytes > 0)
+			int ReceivedByteCount{ recvfrom(m_Socket, m_Buffer, KBufferSize, 0, (sockaddr*)&Client, &ClientAddrLen) };
+			if (ReceivedByteCount > 0)
 			{
-				const auto& Bytes{ Client.sin_addr.S_un.S_un_b };
-				printf("RECEIVED [%d.%d.%d.%d][%d]: %s\n", Bytes.s_b1, Bytes.s_b2, Bytes.s_b3, Bytes.s_b4, received_bytes, m_Buffer);
+				const auto& IPv4{ Client.sin_addr.S_un.S_un_b };
+				printf("RECEIVED [%d.%d.%d.%d][%d]: %s\n", IPv4.s_b1, IPv4.s_b2, IPv4.s_b3, IPv4.s_b4, ReceivedByteCount, m_Buffer);
 
 				// echo
-				sendto(m_Socket, m_Buffer, received_bytes, 0, (sockaddr*)&Client, sizeof(Client));
+				sendto(m_Socket, m_Buffer, ReceivedByteCount, 0, (sockaddr*)&Client, sizeof(Client));
 			}
 		}
 	}
 
 	void DisplayIP()
 	{
-		auto& Bytes{ m_HostAddr.sin_addr.S_un.S_un_b };
-		printf("Server IP: %d.%d.%d.%d\n", Bytes.s_b1, Bytes.s_b2, Bytes.s_b3, Bytes.s_b4);
+		auto& IPv4{ m_HostAddr.sin_addr.S_un.S_un_b };
+		printf("Server IP: %d.%d.%d.%d\n", IPv4.s_b1, IPv4.s_b2, IPv4.s_b3, IPv4.s_b4);
 		printf("Service Port: %d\n", KPort);
 	}
 
@@ -103,7 +102,7 @@ private:
 	bool GetHostIP()
 	{
 		SOCKET Socket{ socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP) };
-		if (Socket == SOCKET_ERROR)
+		if (Socket == INVALID_SOCKET)
 		{
 			printf("%s socket(): %d\n", KFailureHead, WSAGetLastError());
 			return false;
@@ -113,20 +112,20 @@ private:
 		loopback.sin_family = AF_INET;
 		loopback.sin_addr.S_un.S_addr = INADDR_LOOPBACK;
 		loopback.sin_port = htons(9);
-		if (connect(Socket, (sockaddr*)&loopback, sizeof(loopback)))
+		if (connect(Socket, (sockaddr*)&loopback, sizeof(loopback)) == SOCKET_ERROR)
 		{
 			printf("%s connect(): %d\n", KFailureHead, WSAGetLastError());
 			return false;
 		}
 
 		int host_length{ (int)sizeof(m_HostAddr) };
-		if (getsockname(Socket, (sockaddr*)&m_HostAddr, &host_length))
+		if (getsockname(Socket, (sockaddr*)&m_HostAddr, &host_length) == SOCKET_ERROR)
 		{
 			printf("%s getsockname(): %d\n", KFailureHead, WSAGetLastError());
 			return false;
 		}
 
-		if (closesocket(Socket))
+		if (closesocket(Socket) == SOCKET_ERROR)
 		{
 			printf("%s closesocket(): %d\n", KFailureHead, WSAGetLastError());
 		}
