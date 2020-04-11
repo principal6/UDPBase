@@ -3,39 +3,39 @@
 
 int main()
 {
-	CServer Server{};
-	Server.DisplayIP();
-	Server.Open();
-
-	std::thread thr_listen{
+	CServer Server{ 9999, timeval{ 1, 0 } };
+	char Command[2048]{};
+	std::thread thr_command{
 		[&]()
 		{
 			while (true)
 			{
-				if (Server.IsClosing()) break;
-				Server.Listen();
-			}
-		}
-	};
+				if (Server.IsTerminating()) break;
 
-	char CmdBuffer[2048]{};
-	std::thread thr_work{
-		[&]()
-		{
-			while (true)
-			{
-				fgets(CmdBuffer, 2048, stdin);
-				if (strncmp(CmdBuffer, "QUIT", 4) == 0)
+				fgets(Command, 2048, stdin);
+				for (auto& ch : Command)
 				{
-					Server.Close();
-					break;
+					if (ch == '\n') ch = 0;
+				}
+				if (strncmp(Command, "/quit", 5) == 0)
+				{
+					Server.Terminate();
+				}
+				else
+				{
+					Server.SendToAll(Command);
 				}
 			}
 		}
 	};
 
-	thr_listen.join();
-	thr_work.join();
+	while (true)
+	{
+		if (Server.IsTerminating()) break;
 
+		Server.Receive();
+	}
+
+	thr_command.join();
 	return 0;
 }

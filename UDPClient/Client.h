@@ -9,126 +9,126 @@
 class CClient
 {
 public:
-	CClient(const char* ServerIP, u_short Port, timeval TimeOut) : m_Port{ Port }, m_TimeOut{ TimeOut }
+	CClient(const char* ServerIP, u_short Port, timeval TimeOut) : m_TimeOut{ TimeOut }
 	{
 		StartUp(); 
-		Connect(ServerIP, Port);
+		CreateSocket();
+		SetServerAddr(ServerIP, Port);
 	}
-	~CClient() { CleanUp(); }
+	~CClient() 
+	{
+		CloseSocket();
+		CleanUp(); 
+	}
 
 public:
-	void Send(const char* Buffer, int BufferSize)
+	void SetServerAddr(const char* ServerIP, u_short Port)
 	{
-		int SentByteCount{ sendto(m_Socket, Buffer, BufferSize, 0, (sockaddr*)&m_Server, sizeof(m_Server)) };
-		if (SentByteCount > 0)
-		{
-			printf("Sent[%d]: %s\n", BufferSize, Buffer);
-		}
+		m_ServerAddr.sin_family = AF_INET;
+		inet_pton(AF_INET, ServerIP, &m_ServerAddr.sin_addr);
+		m_ServerAddr.sin_port = htons(Port);
 	}
 
-	void Listen()
+public:
+	bool Send(const char* Buffer, int BufferSize = -1) const
 	{
-		fd_set fdSet;
-		FD_ZERO(&fdSet);
-		FD_SET(m_Socket, &fdSet);
+		if (!Buffer) return false;
+		if (BufferSize < 0) BufferSize = (int)strlen(Buffer);
+		int SentByteCount{ sendto(m_Socket, Buffer, BufferSize, 0, (sockaddr*)&m_ServerAddr, sizeof(m_ServerAddr)) };
+		if (SentByteCount > 0) return true;
 
-		if (select(0, &fdSet, 0, 0, &m_TimeOut) > 0)
+		printf("Failed to send [%d bytes]: %s\n", BufferSize, Buffer);
+		return false;
+	}
+
+	bool Receive()
+	{
+		fd_set Copy{ m_SetToSelect };
+		if (select(0, &Copy, nullptr, nullptr, &m_TimeOut) > 0)
 		{
-			m_TimeOutCount = 0;
-			int ServerAddrLen{ (int)sizeof(m_Server) };
-			int ReceivedByteCount{ recvfrom(m_Socket, m_Buffer, KBufferSize, 0, (sockaddr*)&m_Server, &ServerAddrLen) };
+			m_TimeOutCounter = 0;
+			int ServerAddrLen{ (int)sizeof(m_ServerAddr) };
+			int ReceivedByteCount{ recvfrom(m_Socket, m_Buffer, KBufferSize, 0, (sockaddr*)&m_ServerAddr, &ServerAddrLen) };
 			if (ReceivedByteCount > 0)
 			{
-				printf("From SERVER: %s\n", m_Buffer);
+				printf("[%d bytes]: %.*s\n", ReceivedByteCount, ReceivedByteCount, m_Buffer);
+				return true;
 			}
+			return false;
 		}
 		else
 		{
-			++m_TimeOutCount;
+			++m_TimeOutCounter;
+			return false;
 		}
 	}
 
-	bool IsTimedOut()
-	{
-		return (m_TimeOutCount >= 3);
-	}
+public:
+	bool IsTimedOut() { return (m_TimeOutCounter >= KTimeOutCountLimit); }
+	void Terminate() { m_bTerminating = true; }
+	bool IsTerminating() const { return m_bTerminating; }
 
 private:
 	void StartUp()
 	{
-		WSADATA wsaData{};
-		int Result{ WSAStartup(MAKEWORD(2, 2), &wsaData) };
-		if (Result)
+		WSADATA Data{};
+		int Error{ WSAStartup(MAKEWORD(2, 2), &Data) };
+		if (Error)
 		{
-			printf("Failed to start up WSA: %d\n", Result);
+			printf("Failed to start up: %d\n", Error);
 			return;
 		}
-		m_bStartUp = true;
 	}
 
-	void Connect(const char* ServerIP, u_short Port)
+	void CreateSocket()
 	{
-		if (m_Socket > 0)
-		{
-			printf("Already connected to server.\n");
-			return;
-		}
-
 		m_Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 		if (m_Socket == INVALID_SOCKET)
 		{
-			printf("Failed to connect: %d\n", WSAGetLastError());
+			printf("Failed to create socket: %d\n", WSAGetLastError());
+			m_Socket = 0;
 			return;
 		}
-		m_bSocketCreated = true;
 
-		ADDRINFO Hints{};
-		Hints.ai_family = AF_INET;
-		Hints.ai_socktype = SOCK_DGRAM;
-		Hints.ai_protocol = IPPROTO_UDP;
+		FD_SET(m_Socket, &m_SetToSelect);
+	}
 
-		char szPort[255]{};
-		_itoa_s(htons(m_Port), szPort, 10);
-
-		ADDRINFO* Server{};
-		getaddrinfo(ServerIP, szPort, &Hints, &Server);
-		m_Server = *(SOCKADDR_IN*)(Server->ai_addr);
-		m_Server.sin_port = htons(m_Server.sin_port);
+	void CloseSocket()
+	{
+		if (m_Socket && closesocket(m_Socket) == SOCKET_ERROR)
+		{
+			printf("Failed to close socket: %d", WSAGetLastError());
+		}
+		m_Socket = 0;
 	}
 
 	void CleanUp()
 	{
-		if (m_bSocketCreated)
+		int Error{ WSACleanup() };
+		if (Error)
 		{
-			if (closesocket(m_Socket) == SOCKET_ERROR)
-			{
-				printf("Failed to close socket: %d", WSAGetLastError());
-			}
-			else
-			{
-				m_Socket = 0;
-			}
-		}
-		if (m_bStartUp)
-		{
-			WSACleanup();
+			printf("Failed to clean up: %d", Error);
 		}
 	}
 
 private:
 	static constexpr int KBufferSize{ 2048 };
+	static constexpr int KTimeOutCountLimit{ 10 };
 
 private:
-	bool m_bStartUp{};
-	bool m_bSocketCreated{};
+	bool m_bTerminating{};
+
+private:
 	SOCKET m_Socket{};
-	u_short m_Port{};
-	SOCKADDR_IN m_Server{};
 
 private:
-	int m_TimeOutCount{};
-	timeval m_TimeOut{};
+	SOCKADDR_IN m_ServerAddr{};
 
 private:
 	char m_Buffer[KBufferSize]{};
+
+private:
+	int m_TimeOutCounter{};
+	timeval m_TimeOut{};
+	fd_set m_SetToSelect{};
 };

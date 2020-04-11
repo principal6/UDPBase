@@ -3,38 +3,40 @@
 
 int main()
 {
-	CClient Client{ "192.168.219.200", 9999, timeval{ 2, 0 } };
-	char CmdBuffer[2048]{};
-
-	std::thread thr_listen{
+	CClient Client{ "192.168.219.200", 9999, timeval{ 1, 0 } };
+	Client.Send("Hello, Server!");
+	char Command[2048]{};
+	std::thread thr_command{
 		[&]()
 		{
 			while (true)
 			{
-				if (Client.IsTimedOut()) break;
-				Client.Listen();
-			}
-		}
-	};
+				if (Client.IsTerminating() || Client.IsTimedOut()) break;
 
-	std::thread thr_send{
-		[&]()
-		{
-			while (true)
-			{
-				fgets(CmdBuffer, 2048, stdin);
-				if (strncmp(CmdBuffer, "QUIT", 4) == 0) break;
-				for (auto& ch : CmdBuffer)
+				fgets(Command, 2048, stdin);
+				for (auto& ch : Command)
 				{
 					if (ch == '\n') ch = 0;
 				}
-				Client.Send(CmdBuffer, (int)strlen(CmdBuffer) + 1);
+				if (strncmp(Command, "/quit", 5) == 0)
+				{
+					Client.Terminate();
+				}
+				else
+				{
+					Client.Send(Command);
+				}
 			}
 		}
 	};
 
-	thr_listen.join();
-	thr_send.join();
+	while (true)
+	{
+		if (Client.IsTerminating() || Client.IsTimedOut()) break;
 
+		Client.Receive();
+	}
+
+	thr_command.join();
 	return 0;
 }
