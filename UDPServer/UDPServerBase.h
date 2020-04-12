@@ -126,7 +126,11 @@ protected:
 
 	void BindSocket()
 	{
-		if (bind(m_Socket, (sockaddr*)&m_HostAddr, sizeof(m_HostAddr)) == SOCKET_ERROR)
+		SOCKADDR_IN Addr{};
+		Addr.sin_family = AF_INET;
+		Addr.sin_port = m_HostAddr.sin_port;
+		Addr.sin_addr.S_un.S_addr = INADDR_ANY;
+		if (bind(m_Socket, (sockaddr*)&Addr, sizeof(Addr)) == SOCKET_ERROR)
 		{
 			printf("Failed to bind socket: %d\n", WSAGetLastError());
 		}
