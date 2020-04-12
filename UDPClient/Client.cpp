@@ -6,7 +6,7 @@ int main()
 	CClient Client{ "192.168.219.200", 9999, timeval{ 1, 0 } };
 	Client.Send("Hello, Server!");
 	char Command[2048]{};
-	std::thread thr_command{
+	std::thread ThrCommand{
 		[&]()
 		{
 			while (true)
@@ -37,6 +37,6 @@ int main()
 		Client.Receive();
 	}
 
-	thr_command.join();
+	ThrCommand.join();
 	return 0;
 }
