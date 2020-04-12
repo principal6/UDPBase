@@ -34,7 +34,44 @@ public:
 	}
 
 public:
-	virtual void _Receive()
+	virtual bool Receive()
+	{
+		int ReceivedByteCount{};
+		SOCKADDR_IN ClientAddr{};
+		if (_Receive(&ReceivedByteCount, &ClientAddr))
+		{
+			const auto& IPv4{ ClientAddr.sin_addr.S_un.S_un_b };
+			printf("[%d.%d.%d.%d:%d] [%d bytes]: %.*s\n",
+				IPv4.s_b1, IPv4.s_b2, IPv4.s_b3, IPv4.s_b4, ntohs(ClientAddr.sin_port), ReceivedByteCount, ReceivedByteCount, m_Buffer);
+
+			// broadcast
+			SendToAll(m_Buffer, ReceivedByteCount);
+			return true;
+		}
+
+		return false;
+	}
+
+	virtual bool SendTo(const SOCKADDR_IN* Addr, const char* Buffer, int BufferSize = -1) const
+	{
+		if (_SendTo(Addr, Buffer, BufferSize))
+		{
+			return true;
+		}
+
+		const auto& IPv4{ Addr->sin_addr.S_un.S_un_b };
+		printf("Failed to send to CLIENT[%d.%d.%d.%d:%d]: %s\n",
+			IPv4.s_b1, IPv4.s_b2, IPv4.s_b3, IPv4.s_b4, ntohs(Addr->sin_port), Buffer);
+		return true;
+	}
+
+	virtual bool SendToAll(const char* Buffer, int BufferSize = -1) const
+	{
+		return _SendToAll(Buffer, BufferSize);
+	}
+
+protected:
+	bool _Receive(int* OutReceivedByteCount = nullptr, SOCKADDR_IN* OutClientAddr = nullptr)
 	{
 		fd_set Copy{ m_SetToSelect };
 		if (select(0, &Copy, nullptr, nullptr, &m_TimeOut) > 0)
@@ -42,6 +79,8 @@ public:
 			SOCKADDR_IN ClientAddr{};
 			int ClientAddrLen{ (int)sizeof(ClientAddr) };
 			int ReceivedByteCount{ recvfrom(m_Socket, m_Buffer, KBufferSize, 0, (sockaddr*)&ClientAddr, &ClientAddrLen) };
+			if (OutReceivedByteCount) *OutReceivedByteCount = ReceivedByteCount;
+			if (OutClientAddr) *OutClientAddr = ClientAddr;
 			if (ReceivedByteCount > 0)
 			{
 				UClientAddr ClientInfo{ ClientAddr.sin_addr.S_un.S_addr, ClientAddr.sin_port };
@@ -49,31 +88,22 @@ public:
 				{
 					m_usClientAddrs.insert(ClientInfo.Data);
 				}
-
-				const auto& IPv4{ ClientAddr.sin_addr.S_un.S_un_b };
-				printf("[%d.%d.%d.%d:%d] [%d bytes]: %.*s\n",
-					IPv4.s_b1, IPv4.s_b2, IPv4.s_b3, IPv4.s_b4, ntohs(ClientAddr.sin_port), ReceivedByteCount, ReceivedByteCount, m_Buffer);
-
-				// broadcast
-				_SendToAll(m_Buffer, ReceivedByteCount);
+				return true;
 			}
+			return false;
 		}
+		return false;
 	}
 
-	virtual bool _SendTo(const SOCKADDR_IN* Addr, const char* Buffer, int BufferSize = -1) const
+	bool _SendTo(const SOCKADDR_IN* Addr, const char* Buffer, int BufferSize = -1) const
 	{
 		if (!Addr || !Buffer) return false;
 		if (BufferSize < 0) BufferSize = (int)strlen(Buffer);
 		int SentByteCount{ sendto(m_Socket, Buffer, BufferSize, 0, (sockaddr*)Addr, sizeof(*Addr)) };
-		if (SentByteCount > 0) return true;
-		
-		const auto& IPv4{ Addr->sin_addr.S_un.S_un_b };
-		printf("Failed to send to CLIENT[%d.%d.%d.%d:%d]: %s\n",
-			IPv4.s_b1, IPv4.s_b2, IPv4.s_b3, IPv4.s_b4, ntohs(Addr->sin_port), Buffer);
-		return false;
+		return (SentByteCount > 0);
 	}
 
-	virtual bool _SendToAll(const char* Buffer, int BufferSize = -1) const
+	bool _SendToAll(const char* Buffer, int BufferSize = -1) const
 	{
 		bool bFailedAny{};
 		SOCKADDR_IN Addr{};

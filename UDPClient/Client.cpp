@@ -4,9 +4,10 @@
 int main()
 {
 	CUDPClient Client{ "192.168.219.200", 9999, timeval{ 1, 0 } };
-	Client._Send("Hello, Server!");
+	Client.Send("Hello, Server!");
 	char Command[2048]{};
-	std::thread ThrCommand{
+	std::thread ThrCommand
+	{
 		[&]()
 		{
 			while (true)
@@ -24,7 +25,7 @@ int main()
 				}
 				else
 				{
-					Client._Send(Command);
+					Client.Send(Command);
 				}
 			}
 		}
@@ -34,7 +35,7 @@ int main()
 	{
 		if (Client.IsTerminating() || Client.IsTimedOut()) break;
 
-		Client._Receive();
+		Client.Receive();
 	}
 
 	ThrCommand.join();

@@ -30,18 +30,38 @@ public:
 	}
 
 public:
-	virtual bool _Send(const char* Buffer, int BufferSize = -1) const
+	virtual bool Send(const char* Buffer, int BufferSize = -1) const
+	{
+		if (_Send(Buffer, BufferSize))
+		{
+			return true;
+		}
+		printf("Failed to send [%d bytes]: %s\n", BufferSize, Buffer);
+		return false;
+	}
+
+	virtual bool Receive()
+	{
+		int ReceivedByteCount{};
+		if (_Receive(&ReceivedByteCount))
+		{
+			printf("[%d bytes]: %.*s\n", ReceivedByteCount, ReceivedByteCount, m_Buffer);
+			return true;
+		}
+		return false;
+	}
+
+protected:
+	bool _Send(const char* Buffer, int BufferSize = -1) const
 	{
 		if (!Buffer) return false;
 		if (BufferSize < 0) BufferSize = (int)strlen(Buffer);
 		int SentByteCount{ sendto(m_Socket, Buffer, BufferSize, 0, (sockaddr*)&m_ServerAddr, sizeof(m_ServerAddr)) };
 		if (SentByteCount > 0) return true;
-
-		printf("Failed to send [%d bytes]: %s\n", BufferSize, Buffer);
 		return false;
 	}
 
-	virtual bool _Receive()
+	bool _Receive(int* OutReceivedByteCount = nullptr)
 	{
 		fd_set Copy{ m_SetToSelect };
 		if (select(0, &Copy, nullptr, nullptr, &m_TimeOut) > 0)
@@ -49,12 +69,8 @@ public:
 			m_TimeOutCounter = 0;
 			int ServerAddrLen{ (int)sizeof(m_ServerAddr) };
 			int ReceivedByteCount{ recvfrom(m_Socket, m_Buffer, KBufferSize, 0, (sockaddr*)&m_ServerAddr, &ServerAddrLen) };
-			if (ReceivedByteCount > 0)
-			{
-				printf("[%d bytes]: %.*s\n", ReceivedByteCount, ReceivedByteCount, m_Buffer);
-				return true;
-			}
-			return false;
+			if (OutReceivedByteCount) *OutReceivedByteCount = ReceivedByteCount;
+			return (ReceivedByteCount > 0);
 		}
 		else
 		{
@@ -134,7 +150,7 @@ protected:
 protected:
 	char m_Buffer[KBufferSize]{};
 
-protected:
+private:
 	int m_TimeOutCounter{};
 	timeval m_TimeOut{};
 	fd_set m_SetToSelect{};

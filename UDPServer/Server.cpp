@@ -24,7 +24,7 @@ int main()
 				}
 				else
 				{
-					Server._SendToAll(Command);
+					Server.SendToAll(Command);
 				}
 			}
 		}
@@ -34,7 +34,7 @@ int main()
 	{
 		if (Server.IsTerminating()) break;
 
-		Server._Receive();
+		Server.Receive();
 	}
 
 	ThrCommand.join();
