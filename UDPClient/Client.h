@@ -64,13 +64,15 @@ public:
 	}
 
 public:
-	bool IsTimedOut() { return (m_TimeOutCounter >= KTimeOutCountLimit); }
-	void Terminate() { m_bTerminating = true; }
-	bool IsTerminating() const { return m_bTerminating; }
+	bool IsTimedOut() const { return (m_TimeOutCounter >= KTimeOutCountLimit); }
+	bool IsTerminating() const { return !m_bRunning; }
+	void Terminate() { m_bRunning = false; }
 
-private:
+protected:
 	void StartUp()
 	{
+		m_bRunning = true;
+
 		WSADATA Data{};
 		int Error{ WSAStartup(MAKEWORD(2, 2), &Data) };
 		if (Error)
@@ -111,23 +113,23 @@ private:
 		}
 	}
 
-private:
+protected:
 	static constexpr int KBufferSize{ 2048 };
 	static constexpr int KTimeOutCountLimit{ 10 };
 
-private:
-	bool m_bTerminating{};
+protected:
+	bool m_bRunning{};
 
-private:
+protected:
 	SOCKET m_Socket{};
 
-private:
+protected:
 	SOCKADDR_IN m_ServerAddr{};
 
-private:
+protected:
 	char m_Buffer[KBufferSize]{};
 
-private:
+protected:
 	int m_TimeOutCounter{};
 	timeval m_TimeOut{};
 	fd_set m_SetToSelect{};

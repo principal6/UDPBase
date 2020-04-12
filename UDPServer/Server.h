@@ -92,18 +92,21 @@ public:
 	}
 
 public:
-	void DisplayHostAddr()
+	void DisplayHostAddr() const
 	{
 		auto& IPv4{ m_HostAddr.sin_addr.S_un.S_un_b };
 		printf("Server Info [%d.%d.%d.%d:%d]\n", IPv4.s_b1, IPv4.s_b2, IPv4.s_b3, IPv4.s_b4, ntohs(m_HostAddr.sin_port));
 	}
 
-	void Terminate() { m_bTerminating = true; }
-	bool IsTerminating() const { return m_bTerminating; }
+public:
+	bool IsTerminating() const { return !m_bRunning; }
+	void Terminate() { m_bRunning = false; }
 
-private:
+protected:
 	void StartUp()
 	{
+		m_bRunning = true;
+
 		WSADATA Data{};
 		int Error{ WSAStartup(MAKEWORD(2, 2), &Data) };
 		if (Error)
@@ -175,25 +178,25 @@ private:
 		}
 	}
 
-private:
+protected:
 	static constexpr int KBufferSize{ 2048 };
 
-private:
-	bool m_bTerminating{};
+protected:
+	bool m_bRunning{};
 
-private:
+protected:
 	SOCKET m_Socket{};
 
-private:
+protected:
 	SOCKADDR_IN m_HostAddr{};
 
-private:
+protected:
 	char m_Buffer[KBufferSize]{};
 
-private:
+protected:
 	timeval m_TimeOut{};
 	fd_set m_SetToSelect{};
 
-private:
+protected:
 	std::unordered_set<ULONGLONG> m_usClientAddrs{};
 };

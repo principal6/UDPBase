@@ -5,7 +5,8 @@ int main()
 {
 	CServer Server{ 9999, timeval{ 1, 0 } };
 	char Command[2048]{};
-	std::thread thr_command{
+	std::thread ThrCommand
+	{
 		[&]()
 		{
 			while (true)
@@ -36,6 +37,6 @@ int main()
 		Server.Receive();
 	}
 
-	thr_command.join();
+	ThrCommand.join();
 	return 0;
 }
