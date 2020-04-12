@@ -6,16 +6,16 @@
 #include <iostream>
 #include <WS2tcpip.h>
 
-class CUDPClient
+class CUDPClientBase
 {
 public:
-	CUDPClient(const char* ServerIP, u_short Port, timeval TimeOut) : m_TimeOut{ TimeOut }
+	CUDPClientBase(const char* ServerIP, u_short Port, timeval TimeOut) : m_TimeOut{ TimeOut }
 	{
 		StartUp(); 
 		CreateSocket();
 		SetServerAddr(ServerIP, Port);
 	}
-	virtual ~CUDPClient()
+	virtual ~CUDPClientBase()
 	{
 		CloseSocket();
 		CleanUp(); 
@@ -27,28 +27,6 @@ public:
 		m_ServerAddr.sin_family = AF_INET;
 		inet_pton(AF_INET, ServerIP, &m_ServerAddr.sin_addr);
 		m_ServerAddr.sin_port = htons(Port);
-	}
-
-public:
-	virtual bool Send(const char* Buffer, int BufferSize = -1) const
-	{
-		if (_Send(Buffer, BufferSize))
-		{
-			return true;
-		}
-		printf("Failed to send [%d bytes]: %s\n", BufferSize, Buffer);
-		return false;
-	}
-
-	virtual bool Receive()
-	{
-		int ReceivedByteCount{};
-		if (_Receive(&ReceivedByteCount))
-		{
-			printf("[%d bytes]: %.*s\n", ReceivedByteCount, ReceivedByteCount, m_Buffer);
-			return true;
-		}
-		return false;
 	}
 
 protected:

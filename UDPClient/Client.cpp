@@ -1,9 +1,9 @@
-#include "UDPClient.h"
+#include "Client.h"
 #include <thread>
 
 int main()
 {
-	CUDPClient Client{ "192.168.219.200", 9999, timeval{ 1, 0 } };
+	CClient Client{ "192.168.219.200", 9999, timeval{ 1, 0 } };
 	Client.Send("Hello, Server!");
 	char Command[2048]{};
 	std::thread ThrCommand

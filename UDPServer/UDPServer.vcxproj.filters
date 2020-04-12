@@ -10,6 +10,7 @@
     <ClCompile Include="Server.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="UDPServer.h" />
+    <ClInclude Include="UDPServerBase.h" />
+    <ClInclude Include="Server.h" />
   </ItemGroup>
 </Project>

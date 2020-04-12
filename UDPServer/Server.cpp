@@ -1,9 +1,9 @@
-#include "UDPServer.h"
+#include "Server.h"
 #include <thread>
 
 int main()
 {
-	CUDPServer Server{ 9999, timeval{ 1, 0 } };
+	CServer Server{ 9999, timeval{ 1, 0 } };
 	char Command[2048]{};
 	std::thread ThrCommand
 	{
