@@ -1,9 +1,9 @@
-#include "Server.h"
+#include "UDPServer.h"
 #include <thread>
 
 int main()
 {
-	CServer Server{ 9999, timeval{ 1, 0 } };
+	CUDPServer Server{ 9999, timeval{ 1, 0 } };
 	char Command[2048]{};
 	std::thread ThrCommand
 	{
@@ -24,7 +24,7 @@ int main()
 				}
 				else
 				{
-					Server.SendToAll(Command);
+					Server._SendToAll(Command);
 				}
 			}
 		}
@@ -34,7 +34,7 @@ int main()
 	{
 		if (Server.IsTerminating()) break;
 
-		Server.Receive();
+		Server._Receive();
 	}
 
 	ThrCommand.join();

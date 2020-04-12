@@ -16,10 +16,10 @@ union UClientAddr
 	struct { ULONG IPv4; USHORT Port; };
 };
 
-class CServer
+class CUDPServer
 {
 public:
-	CServer(USHORT Port, timeval TimeOut) : m_TimeOut{ TimeOut }
+	CUDPServer(USHORT Port, timeval TimeOut) : m_TimeOut{ TimeOut }
 	{
 		StartUp();
 		CreateSocket();
@@ -27,14 +27,14 @@ public:
 		BindSocket();
 		DisplayHostAddr();
 	}
-	~CServer()
+	virtual ~CUDPServer()
 	{
 		CloseSocket();
 		CleanUp(); 
 	}
 
 public:
-	void Receive()
+	virtual void _Receive()
 	{
 		fd_set Copy{ m_SetToSelect };
 		if (select(0, &Copy, nullptr, nullptr, &m_TimeOut) > 0)
@@ -55,12 +55,12 @@ public:
 					IPv4.s_b1, IPv4.s_b2, IPv4.s_b3, IPv4.s_b4, ntohs(ClientAddr.sin_port), ReceivedByteCount, ReceivedByteCount, m_Buffer);
 
 				// broadcast
-				SendToAll(m_Buffer, ReceivedByteCount);
+				_SendToAll(m_Buffer, ReceivedByteCount);
 			}
 		}
 	}
 
-	bool SendTo(const SOCKADDR_IN* Addr, const char* Buffer, int BufferSize = -1) const
+	virtual bool _SendTo(const SOCKADDR_IN* Addr, const char* Buffer, int BufferSize = -1) const
 	{
 		if (!Addr || !Buffer) return false;
 		if (BufferSize < 0) BufferSize = (int)strlen(Buffer);
@@ -73,7 +73,7 @@ public:
 		return false;
 	}
 
-	bool SendToAll(const char* Buffer, int BufferSize = -1) const
+	virtual bool _SendToAll(const char* Buffer, int BufferSize = -1) const
 	{
 		bool bFailedAny{};
 		SOCKADDR_IN Addr{};
@@ -83,7 +83,7 @@ public:
 			UClientAddr ClientInfo{ ClientAddr };
 			Addr.sin_addr.S_un.S_addr = ClientInfo.IPv4;
 			Addr.sin_port = ClientInfo.Port;
-			if (!SendTo(&Addr, Buffer, BufferSize))
+			if (!_SendTo(&Addr, Buffer, BufferSize))
 			{
 				bFailedAny = true;
 			}
@@ -100,7 +100,12 @@ public:
 
 public:
 	bool IsTerminating() const { return !m_bRunning; }
-	void Terminate() { m_bRunning = false; }
+
+public:
+	void Terminate() 
+	{
+		m_bRunning = false; 
+	}
 
 protected:
 	void StartUp()

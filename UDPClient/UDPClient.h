@@ -6,16 +6,16 @@
 #include <iostream>
 #include <WS2tcpip.h>
 
-class CClient
+class CUDPClient
 {
 public:
-	CClient(const char* ServerIP, u_short Port, timeval TimeOut) : m_TimeOut{ TimeOut }
+	CUDPClient(const char* ServerIP, u_short Port, timeval TimeOut) : m_TimeOut{ TimeOut }
 	{
 		StartUp(); 
 		CreateSocket();
 		SetServerAddr(ServerIP, Port);
 	}
-	~CClient() 
+	virtual ~CUDPClient()
 	{
 		CloseSocket();
 		CleanUp(); 
@@ -30,7 +30,7 @@ public:
 	}
 
 public:
-	bool Send(const char* Buffer, int BufferSize = -1) const
+	virtual bool _Send(const char* Buffer, int BufferSize = -1) const
 	{
 		if (!Buffer) return false;
 		if (BufferSize < 0) BufferSize = (int)strlen(Buffer);
@@ -41,7 +41,7 @@ public:
 		return false;
 	}
 
-	bool Receive()
+	virtual bool _Receive()
 	{
 		fd_set Copy{ m_SetToSelect };
 		if (select(0, &Copy, nullptr, nullptr, &m_TimeOut) > 0)
@@ -66,7 +66,12 @@ public:
 public:
 	bool IsTimedOut() const { return (m_TimeOutCounter >= KTimeOutCountLimit); }
 	bool IsTerminating() const { return !m_bRunning; }
-	void Terminate() { m_bRunning = false; }
+
+public:
+	virtual void Terminate() 
+	{
+		m_bRunning = false; 
+	}
 
 protected:
 	void StartUp()

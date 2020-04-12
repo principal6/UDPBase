@@ -1,10 +1,10 @@
-#include "Client.h"
+#include "UDPClient.h"
 #include <thread>
 
 int main()
 {
-	CClient Client{ "192.168.219.200", 9999, timeval{ 1, 0 } };
-	Client.Send("Hello, Server!");
+	CUDPClient Client{ "192.168.219.200", 9999, timeval{ 1, 0 } };
+	Client._Send("Hello, Server!");
 	char Command[2048]{};
 	std::thread ThrCommand{
 		[&]()
@@ -24,7 +24,7 @@ int main()
 				}
 				else
 				{
-					Client.Send(Command);
+					Client._Send(Command);
 				}
 			}
 		}
@@ -34,7 +34,7 @@ int main()
 	{
 		if (Client.IsTerminating() || Client.IsTimedOut()) break;
 
-		Client.Receive();
+		Client._Receive();
 	}
 
 	ThrCommand.join();
